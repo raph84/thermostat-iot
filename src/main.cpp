@@ -13,13 +13,28 @@ void messageReceived(String &topic, String &payload) {
 
 
 #define PUBLISH_DELAY 60000
+#define RELAY 13
 
 float humidity;
 float temperature;
 unsigned long lastMillis = 0;
+int relay_state = HIGH;
+
+void relay_control() {
+    Serial.println("Relay: " + relay_state );
+    digitalWrite(RELAY,relay_state);
+    if(relay_state == HIGH){
+      relay_state = LOW;
+    } else {
+      relay_state = HIGH;
+    }
+}
 
 void setup() {
   Serial.begin(115200);
+
+  pinMode(RELAY,OUTPUT);
+  digitalWrite(RELAY, LOW);
 
   Wire.begin(15, 2); // SDA, SCL
 
@@ -46,5 +61,9 @@ void loop() {
                      String(",\"humidity\":") + humidity +
                      String("}");
     publishTelemetry(payload);
+
+    relay_control();
   }
+
 }
+
