@@ -28,6 +28,17 @@ String site = "house.kitchen";
 
 StaticJsonDocument<200> payload;
 
+const String FAIL_TEMP = "Error reading temperature!";
+
+void add_error_to_payload(String error){
+  JsonArray data = payload["errors"];
+  if(data.isNull()){
+    data = payload.createNestedArray("errors");
+  }
+  
+  data.add(error);
+}
+
 void update_config(String &topic, String &payload){
 
   StaticJsonDocument<200> doc;
@@ -38,6 +49,8 @@ void update_config(String &topic, String &payload){
   if (error) {
     Serial.print("deserializeJson() failed: ");
     Serial.println(error.c_str());
+    String error = error.c_str();
+    add_error_to_payload(error);
     return;
   }
 
@@ -109,22 +122,23 @@ void loop_publish_temperature(){
     if(sht30.get()==0){
       Serial.print("Temperature in Celsius : ");
       Serial.println(sht30.cTemp);
-      temperature = sht30.cTemp;
       Serial.print("Temperature in Fahrenheit : ");
       Serial.println(sht30.fTemp);
       Serial.print("Relative Humidity : ");
       Serial.println(sht30.humidity);
-      humidity = sht30.humidity;
       Serial.println();
+
+      payload["temperature"] = sht30.cTemp;
+      payload["humidity"] = sht30.humidity;
     }
     else {
-      Serial.println("Error reading temperature!");
+      Serial.println(FAIL_TEMP);
+      add_error_to_payload(FAIL_TEMP);
+      payload.remove("temperature");
+      payload.remove("humidity");
     }
 
-    payload["temperature"] = temperature;
-    payload["humidity"] = humidity;
     publish();
-    
   }
 }
 
