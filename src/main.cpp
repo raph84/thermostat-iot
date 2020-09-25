@@ -47,7 +47,6 @@ void update_config(String &topic, String &payload){
   } else {
     relay_state = LOW;
   }
-
 }
 
 void messageReceived(String &topic, String &payload) {
@@ -93,6 +92,28 @@ void motion(){
   }
 }
 
+void loop_control(){
+  if (millis() - lastMillisControl > CONTROL_DELAY) {
+    lastMillisControl = millis();
+    Serial.println("CONTROL");
+    relay_control();
+  }
+}
+
+void loop_publish_temperature(){
+  if (millis() - lastMillis > PUBLISH_DELAY) {
+    lastMillis = millis();
+
+    temperature = 1.0;
+    humidity = 1.0;
+
+    payload["temperature"] = temperature;
+    payload["humidity"] = humidity;
+    publish();
+    
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -110,6 +131,7 @@ void setup() {
 }
 
 void loop() {
+
   mqttClient->loop();
   delay(10);  // <- fixes some issues with WiFi stability
 
@@ -117,26 +139,14 @@ void loop() {
     connect();
   }
 
+  // detect motion
   motion();
 
-  if (millis() - lastMillisControl > CONTROL_DELAY) {
-    lastMillisControl = millis();
-    Serial.println("CONTROL");
-    relay_control();
-  }
+  // relay control
+  loop_control();
 
   // publish a message roughly every PUBLISH_DELAY ms.
-  if (millis() - lastMillis > PUBLISH_DELAY) {
-    lastMillis = millis();
-
-    temperature = 1.0;
-    humidity = 1.0;
-
-    payload["temperature"] = temperature;
-    payload["humidity"] = humidity;
-    publish();
-    
-  }
+  loop_publish_temperature();
 
 }
 
