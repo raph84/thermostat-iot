@@ -37,6 +37,15 @@ void add_error_to_payload(String error){
   }
   
   data.add(error);
+
+  int size = data.size() - 10;
+  if(size > 0){
+    for(int i=0; i<size; i++){
+      data.remove(i);
+    }
+    payload.garbageCollect();
+  }
+
 }
 
 void update_config(String &topic, String &payload){
