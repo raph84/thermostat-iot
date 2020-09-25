@@ -10,15 +10,21 @@
 
 #define PUBLISH_DELAY 60000
 #define CONTROL_DELAY 10000
+#define MOTION_DELAY 3000
 #define RELAY 13
+#define PIR 27
+#define LED 26
 
 float humidity;
 float temperature;
 unsigned long lastMillis = 0;
 unsigned long lastMillisControl = 0;
+unsigned long lastMillisMotion = 0;
+bool lastMotion = false;
 int relay_state = LOW;
+String site = "house.kitchen";
 
-
+StaticJsonDocument<200> payload;
 
 void update_config(String &topic, String &payload){
 
@@ -28,7 +34,7 @@ void update_config(String &topic, String &payload){
 
   // Test if parsing succeeds.
   if (error) {
-    Serial.print(F("deserializeJson() failed: "));
+    Serial.print("deserializeJson() failed: ");
     Serial.println(error.c_str());
     return;
   }
@@ -56,11 +62,47 @@ void relay_control() {
     digitalWrite(RELAY,relay_state);
 }
 
+void publish(){
+  payload["timestamp"] = time(nullptr);
+
+  String json;
+  serializeJson(payload, json);
+  publishTelemetry(json);
+}
+
+void motion(){
+  long state = digitalRead(PIR);
+  if(state == HIGH){
+    digitalWrite(LED, HIGH);
+    payload["motion"] = true;
+  } else {
+    digitalWrite(LED,LOW);
+    payload["motion"] = false;
+  }
+
+  if (millis() - lastMillisMotion > MOTION_DELAY
+       || state != lastMotion) {
+    lastMillisMotion = millis();
+    if(state == true){
+      Serial.println("MOTION DETECTED");
+    }
+    if(state == true || lastMotion == true){
+      publish();
+    }
+    lastMotion = state;
+  }
+}
+
 void setup() {
   Serial.begin(115200);
 
+  payload["site"] = site;
+
   pinMode(RELAY,OUTPUT);
   digitalWrite(RELAY, LOW);
+
+  pinMode(PIR, INPUT);
+  pinMode(LED, OUTPUT);
 
   Wire.begin(15, 2); // SDA, SCL
 
@@ -75,6 +117,8 @@ void loop() {
     connect();
   }
 
+  motion();
+
   if (millis() - lastMillisControl > CONTROL_DELAY) {
     lastMillisControl = millis();
     Serial.println("CONTROL");
@@ -88,12 +132,9 @@ void loop() {
     temperature = 1.0;
     humidity = 1.0;
 
-    String payload = String("{\"timestamp\":") + time(nullptr) +
-                     String(",\"temperature\":") + temperature +
-                     String(",\"humidity\":") + humidity +
-                     String("}");
-    publishTelemetry(payload);
-
+    payload["temperature"] = temperature;
+    payload["humidity"] = humidity;
+    publish();
     
   }
 
