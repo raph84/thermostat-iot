@@ -4,7 +4,7 @@
 #include "universal-mqtt.h"
 
 #include <Wire.h>
-#include <SPI.h>
+#include <WEMOS_SHT3X.h>
 
 #include <ArduinoJson.h>
 
@@ -14,6 +14,8 @@
 #define RELAY 13
 #define PIR 27
 #define LED 26
+
+SHT3X sht30(0x45);
 
 float humidity;
 float temperature;
@@ -104,8 +106,20 @@ void loop_publish_temperature(){
   if (millis() - lastMillis > PUBLISH_DELAY) {
     lastMillis = millis();
 
-    temperature = 1.0;
-    humidity = 1.0;
+    if(sht30.get()==0){
+      Serial.print("Temperature in Celsius : ");
+      Serial.println(sht30.cTemp);
+      temperature = sht30.cTemp;
+      Serial.print("Temperature in Fahrenheit : ");
+      Serial.println(sht30.fTemp);
+      Serial.print("Relative Humidity : ");
+      Serial.println(sht30.humidity);
+      humidity = sht30.humidity;
+      Serial.println();
+    }
+    else {
+      Serial.println("Error reading temperature!");
+    }
 
     payload["temperature"] = temperature;
     payload["humidity"] = humidity;
@@ -125,7 +139,7 @@ void setup() {
   pinMode(PIR, INPUT);
   pinMode(LED, OUTPUT);
 
-  Wire.begin(15, 2); // SDA, SCL
+  Wire.begin(); // SDA, SCL
 
   setupCloudIoT();
 }
